@@ -1,0 +1,20 @@
+{
+  "name": "gltf-2-3d-tile",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@gltf-transform/core": "^2.1.4",
+    "@gltf-transform/extensions": "^2.1.4",
+    "@gltf-transform/functions": "^2.1.4",
+    "fs-extra": "^10.1.0",
+    "gl-matrix": "^3.4.3",
+    "three": "^0.139.2"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "T": {
+    "_listeners": {
+      "node:create": [
+        null
+      ]
+    },
+    "_emptySet": {},
+    "_edges": {},
+    "_parentEdges": {},
+    "_childEdges": {}
+  },
+  "S": {
+    "_listeners": {},
+    "_disposed": false,
+    "graph": {
+      "_listeners": {
+        "node:create": [
+          null
+        ]
+      },
+      "_emptySet": {},
+      "_edges": {},
+      "_parentEdges": {},
+      "_childEdges": {}
+    },
+    "propertyType": "Root",
+    "l": {}
+  },
+  "M": {
+    "verbosity": 1
+  }
+}
