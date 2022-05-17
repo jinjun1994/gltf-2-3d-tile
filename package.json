@@ -13,8 +13,12 @@
     "@gltf-transform/core": "^2.1.4",
     "@gltf-transform/extensions": "^2.1.4",
     "@gltf-transform/functions": "^2.1.4",
+    "bluebird": "^3.7.2",
+    "cesium": "^1.93.0",
     "fs-extra": "^10.1.0",
     "gl-matrix": "^3.4.3",
-    "three": "^0.139.2"
+    "gltf-pipeline": "^3.0.4",
+    "three": "^0.139.2",
+    "zlib": "^1.0.5"
   }
 }
