@@ -1,4 +1,5 @@
 const { splitGltf } = require('../tools/split-mesh');
+const { instanceDoc } = require('../functions/instance');
 const {
     bounds,
 } = require('@gltf-transform/core');
@@ -15,7 +16,9 @@ class Slicer {
         this.documents = await splitGltf(this.gltf);
     }
     get_bounding_box_by_mesh(mesh_id) {
-        const doc = this.documents[mesh_id];
+        console.log(this.documents.length);
+        console.log(mesh_id);
+        const doc = this.documents[mesh_id].doc;
         const scene = doc.getRoot().listScenes()[0];
         const sceneBounds = bounds(scene);
         return new Box3(new Vector3(...sceneBounds.min), new Vector3(...sceneBounds.max));
@@ -28,7 +31,8 @@ class Slicer {
         return new Matrix4();
     }
     meshes_count() {
-        return this.root.listMeshes().length;
+        // return this.root.listMeshes().length;
+        return this.documents.length;
     }
 }
 module.exports = {

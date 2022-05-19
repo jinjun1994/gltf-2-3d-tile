@@ -193,5 +193,100 @@ module.exports = {
   flattenIndex,
   copyMaterial,
   mergeByMaterial,
-  checkIdentityMatrix
+  checkIdentityMatrix,
+  allProgress
 };
+
+function fullName(p) {
+  let tr = p;
+  let name = p.getName();
+  while (tr.listParents().length) {
+    name = tr.getName() + name;
+    if (tr.listParents()[0].propertyType !== 'Root') {
+      tr = tr.listParents()[0];
+    } else if (tr.listParents()[1]) {
+      tr = tr.listParents()[1];
+    } else {
+      break;
+    }
+  }
+  return name;
+}
+
+function cleanName(name) {
+  if (name.lastIndexOf('(') > 0) {
+    return name.substring(0, name.lastIndexOf('(')).trim();
+  } else {
+    return name;
+  }
+}
+
+function extractElementInfo(p) {
+  let tr = p;
+
+  const hierarchy = [];
+  if (p.getName()) hierarchy.unshift(cleanName(p.getName()));
+  while (tr.listParents().length) {
+    const nodeName = tr.getName();
+    if (nodeName) hierarchy.unshift(cleanName(nodeName));
+    if (tr.listParents()[0].propertyType !== 'Root') {
+      tr = tr.listParents()[0];
+    } else if (tr.listParents()[1]) {
+      tr = tr.listParents()[1];
+    } else {
+      break;
+    }
+  }
+  const name = hierarchy.pop();
+  return { hierarchy, name, elementId: name };
+}
+
+function extractSimlabInfo(p) {
+  let tr = p;
+
+  const hierarchy = [];
+  if (p.getName()) hierarchy.unshift(cleanName(p.getName()));
+  let id = 0;
+  while (tr.listParents().length) {
+    const nodeName = tr.getName();
+    if (nodeName) hierarchy.unshift(cleanName(nodeName));
+    if (tr.listParents()[0].propertyType !== 'Root') {
+      tr = tr.listParents()[0];
+    } else if (tr.listParents()[1]) {
+      tr = tr.listParents()[1];
+    } else {
+      break;
+    }
+  }
+  let name;
+  while (hierarchy.length) {
+    name = hierarchy.pop();
+    if (name.includes('[')) {
+      id = name.substring(name.indexOf('[') + 1, name.indexOf(']'));
+      break;
+    }
+  }
+  name = name.substring(0, name.lastIndexOf('[')).trim();
+  return { hierarchy, name, elementId: id };
+}
+
+
+
+
+
+
+function allProgress(proms, progress_cb) {
+  let d = 0;
+  progress_cb(0);
+  for (const p of proms) {
+     p.then(() => {
+        d++;
+        progress_cb((d * 100) / proms.length);
+     })
+        .catch(() => {
+           d++;
+           progress_cb((d * 100) / proms.length);
+        })
+  }
+  return Promise.all(proms);
+}

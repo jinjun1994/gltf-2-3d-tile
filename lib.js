@@ -16,12 +16,12 @@ async function tileset(
             output: "./models/output.gltf",
             normal: true,
         }
-       const  doc = await mergeGltfs(gltfs,options)
+    //    const  doc = await mergeGltfs(gltfs,options)
   const io = new NodeIO().registerExtensions(ext.KHRONOS_EXTENSIONS);
 
-        // const doc = await io.read("./models/office/scene.gltf");
+        const doc = await io.read("./models/jiaju/合并_家具.gltf.transform.dedup.glb");
 
-        if (!fout)  fout = "./models/office/tile/"
+        if (!fout)  fout = "./models/jiaju/tile/"
     
         await gltf_to_tileset(doc, fout)
         // copy_textures(fin, fout, gltf.images)

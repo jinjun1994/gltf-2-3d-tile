@@ -1,21 +1,18 @@
 const { Document, NodeIO, Accessor, BufferUtils, Primitive } = require('@gltf-transform/core');
 const { dedup, prune, weld } = require('@gltf-transform/functions');
 //[Question: How to split meshes to separate gltf? · Issue #188 · donmccurdy/glTF-Transform](https://github.com/donmccurdy/glTF-Transform/issues/188)
+const { instanceDoc } = require('../functions/instance');
+const { allProgress } = require('./utils');
 
 async function splitGltf(gltf) {
-   const docs = []
-   for (const [index, mesh] of Object.entries(
-      gltf.getRoot().listMeshes()
-   //    [
-   //       gltf.getRoot().listMeshes()[0],
-   //       gltf.getRoot().listMeshes()[1],
-   //       gltf.getRoot().listMeshes()[2],
-   //       gltf.getRoot().listMeshes()[3],
-   //       gltf.getRoot().listMeshes()[4],
-   
-   // ]
-   )) {
 
+   return await instanceDoc(gltf);
+
+
+
+
+
+   const promiseArray = gltf.getRoot().listMeshes().map((mesh, index) => {
       const newDoc = gltf.clone();
 
 
@@ -24,24 +21,39 @@ async function splitGltf(gltf) {
       oldScene.dispose();
       const scene = newDoc.createScene();
       newDoc.getRoot().setDefaultScene(scene);
-      const node = newDoc.createNode("test");
+      const node = newDoc.createNode(mesh.getName());
       node.setMesh(curentMesh);
       scene.addChild(node);
+      newDoc.getRoot().listNodes().forEach(element => {
+         if (node != element) element.dispose();
+      });
+
+
+      // scene.traverse((n) => {
+      //    console.log(node != n);
+      //    if (node != n) scene.removeChild(n);
+      // })
 
       const name = mesh.getName();
       //[Possibility to specify name for .bin files emmited from partition command? · Discussion #412 · donmccurdy/glTF-Transform](https://github.com/donmccurdy/glTF-Transform/discussions/412)
       newDoc.getRoot().listBuffers()[0].setURI(name + '.bin');
 
+      console.log(index);
+      return newDoc.transform(prune()).then((doc) => {
+         console.log(`Done ${index}`);
+         return doc;
+      });
+   });
+   // return Promise.all(promiseArray)
 
-      await newDoc.transform(weld(), dedup(), prune());
-
-      
-      // const io = new NodeIO()
-      //  await io.write("./models/split/"+name+".gltf", newDoc);
-      docs.push(newDoc)
-   }
-   return docs
+   // return docs
+   console.log(promiseArray);
+   return allProgress(promiseArray,
+      (p) => {
+         console.log(`% Done = ${p.toFixed(2)}`);
+      });
 }
+
 
 
 // (async () => {

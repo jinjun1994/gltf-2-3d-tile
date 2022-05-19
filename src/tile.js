@@ -1,5 +1,6 @@
 const FOOT_TO_METER_MULTIPLIER = 0.3084
 const glbToB3dm = require('../tools/glbToB3dm');
+const doc2I3dm = require('../tools/docToI3dm');
 const { Box3, Matrix4, Sphere, Vector3 } = require("three")
 const { Document, NodeIO, Accessor, BufferUtils, Primitive } = require('@gltf-transform/core');
 var fsExtra = require('fs-extra');
@@ -21,7 +22,7 @@ class Tile {
         instance_box = new Box3(),
         instances_matrices = null,
         gltf = null,
-        fout ="./"
+        fout = "./"
     } = {}) {
         this.refine = refine;
         this.__content_id = content_id;
@@ -64,17 +65,30 @@ class Tile {
         this.__content_matrices.push(matrix);
     }
     content() {
-        if (1 < this.__content_matrices.length) {
-            return new I3dm(this.__content_id.toString(), this.__gltf, this.__content_matrices);
+        const io = new NodeIO()
+
+        const { doc, type, name,featureTableJson } = this.__gltf
+        if (type === "i3dm") {
+
+
+            io.writeBinary(doc).then(glb => {
+
+               doc2I3dm(glb, {customFeatureTable:featureTableJson}).then(i3dm => {
+                fsExtra.outputFile(`${this.fout + this.__content_id}.i3dm`, i3dm.i3dm)
+                })
+          
+            })
+            return {
+                "uri": `${name||this.__content_id}.i3dm`
+            }
         } else {
             // TODO:
             // return new B3dm(this.__content_id.toString(), this.__gltf);
             // TODO:
             // 输出目录传参？ 
             // b3dm 优化
-            const io = new NodeIO()
             io.writeBinary(this.__gltf).then(glb => {
-                
+
                 fsExtra.outputFile(`${this.fout + this.__content_id}.b3dm`, glbToB3dm(glb))
                 fsExtra.outputFile(`${this.fout + this.__content_id}.glb`, glb)
             })
