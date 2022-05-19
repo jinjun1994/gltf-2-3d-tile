@@ -258,8 +258,7 @@ function instance(doc) {
 
 
 		const curentMesh = newDoc.getRoot().listMeshes().filter(m=>m.getName()==mesh.getName())[0];
-		console.log(mesh.getName());
-		console.log(newDoc.getRoot().listMeshes().filter(m=>m.getName()==mesh.getName()).length);
+
 		const oldScene = newDoc.getRoot().getDefaultScene();
 		oldScene.dispose();
 		const scene = newDoc.createScene();
@@ -282,6 +281,7 @@ function instance(doc) {
 		newDoc.getRoot().listBuffers()[0].setURI(name + '.bin');
 
 		console.log(index);
+		console.log(name);
 		return newDoc.transform(prune()).then((doc) => {
 			console.log(`i3dm doc Done ${index}`);
 			return {

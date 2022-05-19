@@ -16,8 +16,6 @@ class Slicer {
         this.documents = await splitGltf(this.gltf);
     }
     get_bounding_box_by_mesh(mesh_id) {
-        console.log(this.documents.length);
-        console.log(mesh_id);
         const doc = this.documents[mesh_id].doc;
         const scene = doc.getRoot().listScenes()[0];
         const sceneBounds = bounds(scene);

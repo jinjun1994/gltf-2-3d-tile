@@ -68,18 +68,19 @@ class Tile {
         const io = new NodeIO()
 
         const { doc, type, name,featureTableJson } = this.__gltf
+        const fileName = name||this.__content_id
         if (type === "i3dm") {
 
 
             io.writeBinary(doc).then(glb => {
 
                doc2I3dm(glb, {customFeatureTable:featureTableJson}).then(i3dm => {
-                fsExtra.outputFile(`${this.fout + this.__content_id}.i3dm`, i3dm.i3dm)
+                fsExtra.outputFile(`${this.fout + fileName}.i3dm`, i3dm.i3dm)
                 })
           
             })
             return {
-                "uri": `${name||this.__content_id}.i3dm`
+                "uri": `${fileName}.i3dm`
             }
         } else {
             // TODO:
