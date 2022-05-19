@@ -15,6 +15,7 @@
     "@gltf-transform/functions": "^2.1.4",
     "bluebird": "^3.7.2",
     "cesium": "^1.93.0",
+    "filenamify": "^4.3.0",
     "fs-extra": "^10.1.0",
     "gl-matrix": "^3.4.3",
     "gltf-pipeline": "^3.0.4",

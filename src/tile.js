@@ -5,6 +5,7 @@ const { Box3, Matrix4, Sphere, Vector3 } = require("three")
 const { Document, NodeIO, Accessor, BufferUtils, Primitive } = require('@gltf-transform/core');
 var fsExtra = require('fs-extra');
 const { checkIdentityMatrix } = require('../tools/utils');
+const filenamify = require("filenamify");
 class Measure {
     METER = "meter"
     FOOT = "foot"
@@ -68,7 +69,7 @@ class Tile {
         const io = new NodeIO()
 
         const { doc, type, name,featureTableJson } = this.__gltf
-        const fileName = name||this.__content_id
+        const fileName = filenamify(name||this.__content_id)
         if (type === "i3dm") {
 
 
