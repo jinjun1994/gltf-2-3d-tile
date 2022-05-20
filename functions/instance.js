@@ -166,10 +166,18 @@ function instance(doc) {
 			const nodes = Array.from(meshInstances.get(mesh));
 			// not instance mesh : all merge by material then  split to  b3dm
 			if (nodes.length < 2) {
-			
+				const node = nodes[0];
+				t = node.getWorldTranslation()
+				r = node.getWorldRotation()
+				s = node.getWorldScale()
 				b3dms.push({
 					type: "b3dm",
-					mesh
+					mesh,
+					TRANSFORMATIONS:{
+						t,
+						r,
+						s
+					}
 				})
 				continue
 			};
@@ -239,7 +247,7 @@ function instance(doc) {
 	}
 
 	logger.debug(`${NAME}: Complete.`);
-	const promiseArray = [...i3dms,...b3dms].map(async ({type, mesh, featureTableJson }, index) => {
+	const promiseArray = [...i3dms,...b3dms].map(async ({type, mesh,TRANSFORMATIONS,featureTableJson }, index) => {
 		const newDoc = doc.clone();
 
 
@@ -251,6 +259,11 @@ function instance(doc) {
 		newDoc.getRoot().setDefaultScene(scene);
 		const node = newDoc.createNode(mesh.getName());
 		node.setMesh(curentMesh);
+		if(TRANSFORMATIONS){
+			node.setTranslation(TRANSFORMATIONS.t);
+			node.setRotation(TRANSFORMATIONS.r);
+			node.setScale(TRANSFORMATIONS.s);
+		}
 		scene.addChild(node);
 		newDoc.getRoot().listNodes().forEach(element => {
 			if (node != element) element.dispose();
