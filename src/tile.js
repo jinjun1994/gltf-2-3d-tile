@@ -68,35 +68,44 @@ class Tile {
     content() {
         const io = new NodeIO()
 
-        const { doc, type, name,featureTableJson } = this.__gltf
-        const fileName = filenamify(name||this.__content_id)
+        const { doc, glbPath, type, name, featureTableJson } = this.__gltf
+        const fileName = filenamify(name || this.__content_id)
+        console.log(glbPath);
         if (type === "i3dm") {
 
-
-            io.writeBinary(doc).then(glb => {
-
-               doc2I3dm(glb, {customFeatureTable:featureTableJson}).then(i3dm => {
-                fsExtra.outputFile(`${this.fout + fileName}.i3dm`, i3dm.i3dm)
+            fsExtra.readFile(glbPath, (err, glb) => {
+                if (err) {
+                    console.error(err)
+                    return
+                }
+                doc2I3dm(glb, { customFeatureTable: featureTableJson }).then(i3dm => {
+                    fsExtra.outputFile(`${this.fout + fileName}.i3dm`, i3dm.i3dm)
                 })
-          
             })
+
+   
             return {
                 "uri": `${fileName}.i3dm`
             }
-        } else {
+        } else if (type === "b3dm") {
             // TODO:
             // return new B3dm(this.__content_id.toString(), this.__gltf);
             // TODO:
             // 输出目录传参？ 
             // b3dm 优化
-            io.writeBinary(this.__gltf).then(glb => {
 
-                fsExtra.outputFile(`${this.fout + this.__content_id}.b3dm`, glbToB3dm(glb))
-                fsExtra.outputFile(`${this.fout + this.__content_id}.glb`, glb)
+            fsExtra.readFile(glbPath, (err, glb) => {
+                if (err) {
+                    console.error(err)
+                    return
+                }
+                fsExtra.outputFile(`${this.fout + fileName}.b3dm`, glbToB3dm(glb))
+                // fsExtra.outputFile(`${this.fout + this.__content_id}.glb`, glb)
             })
+       
 
             return {
-                "uri": `${this.__content_id}.b3dm`
+                "uri": `${fileName}.b3dm`
             }
         }
     }

@@ -1,7 +1,13 @@
-const { dedup, inspect, utils ,prune} = require('@gltf-transform/functions');
+const { dedup, inspect, utils, prune } = require('@gltf-transform/functions');
 const { InstancedMesh, MeshGPUInstancing } = require('@gltf-transform/extensions');
 const { Quaternion, Euler } = require("three")
-const { allProgress } = require('../tools/utils');
+const { allProgress, get_bounding_box_by_doc } = require('../tools/utils');
+const Piscina = require('piscina');
+const path = require('path');
+const { cpus } = require('os');
+const ext = require('@gltf-transform/extensions');
+var fsExtra = require('fs-extra');
+const filenamify = require("filenamify");
 
 const {
 	Accessor,
@@ -11,11 +17,21 @@ const {
 	GLTF,
 	ImageUtils,
 	Texture,
+	NodeIO,
 	TypedArray,
 	bounds,
 	Node,
 	PropertyType,
 } = require('@gltf-transform/core');
+const io = new NodeIO().registerExtensions(ext.KHRONOS_EXTENSIONS);
+
+const piscina = new Piscina({
+	minThreads: cpus().length,
+	filename: path.resolve(__dirname, 'worker.js')
+
+});
+
+
 module.exports = {
 	instanceDoc,
 }
@@ -133,6 +149,7 @@ function instance(doc) {
 	let numBatches = 0;
 	let numInstances = 0;
 	const i3dms = [];
+	const b3dms = [];
 
 	for (const scene of root.listScenes()) {
 		// Gather a one-to-many Mesh/Node mapping, identifying what we can instance.
@@ -148,22 +165,16 @@ function instance(doc) {
 		for (const mesh of Array.from(meshInstances.keys())) {
 			const nodes = Array.from(meshInstances.get(mesh));
 			// not instance mesh : all merge by material then  split to  b3dm
-			if (nodes.length < 2) continue;
+			if (nodes.length < 2) {
+			
+				b3dms.push({
+					type: "b3dm",
+					mesh
+				})
+				continue
+			};
 			if (nodes.some((node) => node.getSkin())) continue;
-			// instance mesh to i3dm
-			const batch = createBatch(doc, batchExtension, mesh, nodes.length);
-			const batchTranslation = batch.getAttribute('TRANSLATION');
-			const batchRotation = batch.getAttribute('ROTATION');
-			const batchScale = batch.getAttribute('SCALE');
 
-			const batchNode = doc.createNode()
-				.setMesh(mesh)
-				.setExtension('EXT_mesh_gpu_instancing', batch);
-			scene.addChild(batchNode);
-
-			let needsTranslation = false;
-			let needsRotation = false;
-			let needsScale = false;
 			const featureTableJson = {
 				position: [],
 				orientation: [],
@@ -173,17 +184,10 @@ function instance(doc) {
 			for (let i = 0; i < nodes.length; i++) {
 				let t, r, s;
 				const node = nodes[i];
+				t = node.getWorldTranslation()
+				r = node.getWorldRotation()
+				s = node.getWorldScale()
 
-				batchTranslation.setElement(i, t = node.getWorldTranslation());
-				batchRotation.setElement(i, r = node.getWorldRotation());
-				batchScale.setElement(i, s = node.getWorldScale());
-
-				if (!MathUtils.eq(t, [0, 0, 0])) needsTranslation = true;
-				if (!MathUtils.eq(r, [0, 0, 0, 1])) needsRotation = true;
-				if (!MathUtils.eq(s, [1, 1, 1])) needsScale = true;
-
-				// Mark the node for cleanup.
-				// node.setMesh(null);
 				modifiedNodes.push(node);
 				{
 					//i3dm
@@ -195,11 +199,7 @@ function instance(doc) {
 				}
 			}
 
-			if (!needsTranslation) batchTranslation.dispose();
-			if (!needsRotation) batchRotation.dispose();
-			if (!needsScale) batchScale.dispose();
 
-			pruneUnusedNodes(modifiedNodes, logger);
 
 			numBatches++;
 			numInstances += nodes.length;
@@ -208,6 +208,7 @@ function instance(doc) {
 			{
 				//i3dm 
 				i3dms.push({
+					type: "i3dm",
 					mesh,
 					featureTableJson
 				})
@@ -222,22 +223,7 @@ function instance(doc) {
 				// "orientation":[[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0]],
 				// "scale":[[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1]]}
 				//方向计算参考 https://github.com/PrincessGod/objTo3d-tiles/blob/181b186e2b3bddad0bd5d7857811f29b768f3406/lib/obj2I3dm.js#L160
-				// create i3dm
-				//  const featureTableJson =   {
-				//         "INSTANCES_LENGTH": numInstances,
-				//         "POSITION": {
-				//             "byteOffset": 0
-				//         },
-				//         "NORMAL_UP": {
-				//             "byteOffset": numInstances * 12
-				//         },
-				//         "NORMAL_RIGHT": {
-				//             "byteOffset": numInstances * 24
-				//         },
-				//         "SCALE_NON_UNIFORM": {
-				//             "byteOffset": numInstances * 36
-				//         }
-				//     }
+
 
 			}
 		}
@@ -253,11 +239,11 @@ function instance(doc) {
 	}
 
 	logger.debug(`${NAME}: Complete.`);
-	const promiseArray = i3dms.map(({ mesh, featureTableJson }, index) => {
+	const promiseArray = [...i3dms,...b3dms].map(async ({type, mesh, featureTableJson }, index) => {
 		const newDoc = doc.clone();
 
 
-		const curentMesh = newDoc.getRoot().listMeshes().filter(m=>m.getName()==mesh.getName())[0];
+		const curentMesh = newDoc.getRoot().listMeshes().filter(m => m.getName() == mesh.getName())[0];
 
 		const oldScene = newDoc.getRoot().getDefaultScene();
 		oldScene.dispose();
@@ -282,15 +268,44 @@ function instance(doc) {
 
 		console.log(index);
 		console.log(name);
-		return newDoc.transform(prune()).then((doc) => {
-			console.log(`i3dm doc Done ${index}`);
-			return {
-				type:"i3dm",
-				name,
-				doc, featureTableJson };
-		});
-	})
 
+		const meshDoc =await newDoc.transform(prune())
+		console.log(`i3dm doc Done ${index}`);
+		const docPath = `./tmp/${filenamify(name.replace("/", ""))}.glb`
+		const glb = await io.writeBinary(meshDoc)
+		await fsExtra.outputFile(docPath, glb)
+		// await io.write(docPath, meshDoc)
+
+		return {
+			type,
+			name,
+			glbPath: docPath,
+			bounding_box: get_bounding_box_by_doc(meshDoc),
+			featureTableJson
+		};
+
+		// const glb = await io.writeBinary(newDoc)
+		// const newDocPath = `./tmp/${filenamify(name.replace("/",""))}.newDoc.glb`
+
+		// // await fsExtra.outputFile(newDocPath, glb)
+		// return piscina.run({
+		// 	newDocPath,glb
+		// }).then(async () => {
+		// 	const glbPath = newDocPath.replace(".newDoc","")
+		// 	console.log(`i3dm doc Done ${index}`);
+		// 	console.log("glbPath",glbPath);
+		// 	const doc = await io.read(glbPath)
+
+		// 	return {
+		// 		type: "i3dm",
+		// 		name,
+		// 		glbPath,
+		// 		bounding_box: get_bounding_box_by_doc(doc)
+		// 		, featureTableJson
+		// 	};
+		// });
+	})
+    console.log(promiseArray);
 	return allProgress(promiseArray,
 		(p) => {
 			console.log(`% i3dm Done = ${p.toFixed(2)}`);
@@ -299,60 +314,5 @@ function instance(doc) {
 
 }
 
-function pruneUnusedNodes(nodes, logger) {
-	// return
-	let node;
-	let unusedNodes = 0;
-	while ((node = nodes.pop())) {
-		if (node.listChildren().length
-			|| node.getCamera()
-			|| node.getMesh()
-			|| node.getSkin()
-			|| node.listExtensions().length) {
-			continue;
-		}
-		const nodeParent = node.getParent();
-		if (nodeParent instanceof Node) {
-			nodes.push(nodeParent);
-		}
-		node.dispose();
-		unusedNodes++;
-	}
 
-	logger.debug(`${NAME}: Removed ${unusedNodes} unused nodes.`);
-}
 
-function createBatch(
-	doc,
-	batchExtension,
-	mesh,
-	count) {
-	const buffer = mesh.listPrimitives()[0].getAttribute('POSITION').getBuffer();
-
-	const batchTranslation = doc.createAccessor()
-		.setType('VEC3')
-		.setArray(new Float32Array(3 * count))
-		.setBuffer(buffer);
-	const batchRotation = doc.createAccessor()
-		.setType('VEC4')
-		.setArray(new Float32Array(4 * count))
-		.setBuffer(buffer);
-	// 四元数
-	const batchScale = doc.createAccessor()
-		.setType('VEC3')
-		.setArray(new Float32Array(3 * count))
-		.setBuffer(buffer);
-
-	return batchExtension.createInstancedMesh()
-		.setAttribute('TRANSLATION', batchTranslation)
-		.setAttribute('ROTATION', batchRotation)
-		.setAttribute('SCALE', batchScale);
-}
-function createI3dmFeature(
-	doc,
-	batchExtension,
-	mesh,
-	count) {
-	//
-
-}

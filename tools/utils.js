@@ -1,4 +1,5 @@
-const { Document, NodeIO, Accessor, BufferUtils, Primitive } = require('@gltf-transform/core');
+const { Document, NodeIO, Accessor, BufferUtils, Primitive,bounds } = require('@gltf-transform/core');
+const { Box3, Vector3 } = require("three")
 
 BufferUtils.trim = (buffer) => {
   const { byteOffset, byteLength } = buffer;
@@ -188,14 +189,6 @@ function checkIdentityMatrix(matrix) {
   return true;
 }
 
-module.exports = {
-  flattenArray,
-  flattenIndex,
-  copyMaterial,
-  mergeByMaterial,
-  checkIdentityMatrix,
-  allProgress
-};
 
 function fullName(p) {
   let tr = p;
@@ -290,3 +283,26 @@ function allProgress(proms, progress_cb) {
   }
   return Promise.all(proms);
 }
+
+
+
+function get_bounding_box_by_doc(doc) {
+  const scene = doc.getRoot().listScenes()[0];
+  const sceneBounds = bounds(scene);
+  return new Box3(new Vector3(...sceneBounds.min), new Vector3(...sceneBounds.max));
+}
+
+
+
+
+
+
+module.exports = {
+  flattenArray,
+  flattenIndex,
+  copyMaterial,
+  mergeByMaterial,
+  checkIdentityMatrix,
+  allProgress,
+  get_bounding_box_by_doc
+};

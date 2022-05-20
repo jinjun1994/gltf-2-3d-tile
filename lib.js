@@ -19,8 +19,10 @@ async function tileset(
     //    const  doc = await mergeGltfs(gltfs,options)
   const io = new NodeIO().registerExtensions(ext.KHRONOS_EXTENSIONS);
 
+        // const doc = await io.read("./models/jianzhu/合并_建筑.gltf.transform.dedup.glb");
         const doc = await io.read("./models/jiaju/合并_家具.gltf.transform.dedup.glb");
 
+        // if (!fout)  fout = "./models/jianzhu/tile/"
         if (!fout)  fout = "./models/jiaju/tile/"
     
         await gltf_to_tileset(doc, fout)

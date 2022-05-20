@@ -16,10 +16,7 @@ class Slicer {
         this.documents = await splitGltf(this.gltf);
     }
     get_bounding_box_by_mesh(mesh_id) {
-        const doc = this.documents[mesh_id].doc;
-        const scene = doc.getRoot().listScenes()[0];
-        const sceneBounds = bounds(scene);
-        return new Box3(new Vector3(...sceneBounds.min), new Vector3(...sceneBounds.max));
+       return this.documents[mesh_id].bounding_box;
     }
 
 

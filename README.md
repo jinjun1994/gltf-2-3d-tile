@@ -21,7 +21,7 @@
 6 输出 tileset
 
 
-node --stack-size=100000 --max-old-space-size=16000 lib.js 
+node --stack-size=100000 --max-old-space-size=46000 lib.js 
 
 TODO:
 1. 位置不同一样的mesh如椅子，会生成多个，进行简化处理, i3dm

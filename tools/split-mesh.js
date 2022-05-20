@@ -6,8 +6,9 @@ const { allProgress } = require('./utils');
 
 async function splitGltf(gltf) {
 
-   return await instanceDoc(gltf);
-
+   const result =  await instanceDoc(gltf);
+   console.log(result);
+   return result
 
 
 

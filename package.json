@@ -19,6 +19,7 @@
     "fs-extra": "^10.1.0",
     "gl-matrix": "^3.4.3",
     "gltf-pipeline": "^3.0.4",
+    "piscina": "^3.2.0",
     "three": "^0.139.2",
     "zlib": "^1.0.5"
   }
