@@ -1,4 +1,4 @@
-const { dedup, inspect, utils, prune } = require('@gltf-transform/functions');
+const { dedup, inspect, utils,prune } = require('@gltf-transform/functions');
 const { InstancedMesh, MeshGPUInstancing } = require('@gltf-transform/extensions');
 const { Quaternion, Euler } = require("three")
 const { allProgress, get_bounding_box_by_doc } = require('../tools/utils');
@@ -133,7 +133,7 @@ const NAME = 'instance';
  * Creates GPU instances (with `EXT_mesh_gpu_instancing`) for shared {@link Mesh} references. No
  * options are currently implemented for this function.
  */
-function instance(doc) {
+async function instance(doc) {
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 
 
@@ -247,9 +247,15 @@ function instance(doc) {
 	}
 
 	logger.debug(`${NAME}: Complete.`);
-	const promiseArray = [...i3dms,...b3dms].map(async ({type, mesh,TRANSFORMATIONS,featureTableJson }, index) => {
+
+     let index = -1;
+const 	 array = []
+ 	for (const {type, mesh,TRANSFORMATIONS,featureTableJson } of [...i3dms,...b3dms]) {
+			console.log(`newDoc ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024 * 100) / 100} MB`);
+        index++;
 		const newDoc = doc.clone();
 
+		console.log(`newDoc ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024 * 100) / 100} MB`);
 
 		const curentMesh = newDoc.getRoot().listMeshes().filter(m => m.getName() == mesh.getName())[0];
 
@@ -270,10 +276,6 @@ function instance(doc) {
 		});
 
 
-		// scene.traverse((n) => {
-		//    console.log(node != n);
-		//    if (node != n) scene.removeChild(n);
-		// })
 
 		const name = mesh.getName();
 		//[Possibility to specify name for .bin files emmited from partition command? · Discussion #412 · donmccurdy/glTF-Transform](https://github.com/donmccurdy/glTF-Transform/discussions/412)
@@ -283,46 +285,28 @@ function instance(doc) {
 		console.log(name);
 
 		const meshDoc =await newDoc.transform(prune())
+		console.log(`meshDoc ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024 * 100) / 100} MB`);
+		
 		console.log(`i3dm doc Done ${index}`);
 		const docPath = `./tmp/${filenamify(name.replace("/", ""))}.glb`
 		const glb = await io.writeBinary(meshDoc)
 		await fsExtra.outputFile(docPath, glb)
 		// await io.write(docPath, meshDoc)
 
-		return {
+		array.push( {
 			type,
 			name,
 			glbPath: docPath,
 			bounding_box: get_bounding_box_by_doc(meshDoc),
 			featureTableJson
-		};
-
-		// const glb = await io.writeBinary(newDoc)
-		// const newDocPath = `./tmp/${filenamify(name.replace("/",""))}.newDoc.glb`
-
-		// // await fsExtra.outputFile(newDocPath, glb)
-		// return piscina.run({
-		// 	newDocPath,glb
-		// }).then(async () => {
-		// 	const glbPath = newDocPath.replace(".newDoc","")
-		// 	console.log(`i3dm doc Done ${index}`);
-		// 	console.log("glbPath",glbPath);
-		// 	const doc = await io.read(glbPath)
-
-		// 	return {
-		// 		type: "i3dm",
-		// 		name,
-		// 		glbPath,
-		// 		bounding_box: get_bounding_box_by_doc(doc)
-		// 		, featureTableJson
-		// 	};
-		// });
-	})
-    console.log(promiseArray);
-	return allProgress(promiseArray,
-		(p) => {
-			console.log(`% i3dm Done = ${p.toFixed(2)}`);
-		});
+		})
+	}
+	return array;
+    // console.log(promiseArray);
+	// return allProgress(promiseArray,
+	// 	(p) => {
+	// 		console.log(`% i3dm Done = ${p.toFixed(2)}`);
+	// 	});
 
 
 }
