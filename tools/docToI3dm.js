@@ -20,11 +20,10 @@ var sizeOfFloat32 = 4;
  * @param {Object} options Optional parameters.
  */
 function doc2I3dm(glb, options) {
-    var defaultBatchTable = options.batchTableJson || {};
     var featureTable = defaultValue(options.customFeatureTable, undefined);
     var featureTableJson = {};
     var featureTableBinary;
-    var batchTableJson = defaultValue(options.customBatchTable, undefined);
+    var batchTableJson = defaultValue(options.batchTableJson, undefined);
 
     return new Promise(function (resolve, reject) {
         if (featureTable.position && Array.isArray(featureTable.position)) {
@@ -33,7 +32,7 @@ function doc2I3dm(glb, options) {
             featureTableJson.INSTANCES_LENGTH = position.length;
             var attributes = [];
             attributes.push(getPositions(position));
-            attributes.push(getBatchIds(position.length));
+            attributes.push(getBatchIds(batchTableJson.batchId));
             if (featureTable.orientation) {
                 if (featureTable.orientation.length !== length) {
                     if (featureTable.orientation.length > length) {
@@ -89,7 +88,7 @@ function doc2I3dm(glb, options) {
 
             resolve({
                 i3dm: i3dm,
-                batchTableJson: defaultBatchTable
+                batchTableJson: batchTableJson
             });
         }
         reject('Invalued FeatureTable.');
@@ -114,7 +113,8 @@ function doc2I3dm(glb, options) {
         };
     }
 
-    function getBatchIds(instancesLength) {
+    function getBatchIds(batchId) {
+        const instancesLength = Math.max(...batchId);
         var i;
         var buffer;
         var componentType;
@@ -123,21 +123,21 @@ function doc2I3dm(glb, options) {
         if (instancesLength < 256) {
             buffer = Buffer.alloc(instancesLength * sizeOfUint8);
             for (i = 0; i < instancesLength; ++i) {
-                buffer.writeUInt8(i, i * sizeOfUint8);
+                buffer.writeUInt8(batchId[i], i * sizeOfUint8);
             }
             componentType = 'UNSIGNED_BYTE';
             byteAlignment = sizeOfUint8;
         } else if (instancesLength < 65536) {
             buffer = Buffer.alloc(instancesLength * sizeOfUint16);
             for (i = 0; i < instancesLength; ++i) {
-                buffer.writeUInt16LE(i, i * sizeOfUint16);
+                buffer.writeUInt16LE(batchId[i], i * sizeOfUint16);
             }
             componentType = 'UNSIGNED_SHORT';
             byteAlignment = sizeOfUint16;
         } else {
             buffer = Buffer.alloc(instancesLength * sizeOfUint32);
             for (i = 0; i < instancesLength; ++i) {
-                buffer.writeUInt32LE(i, i * sizeOfUint32);
+                buffer.writeUInt32LE(batchId[i], i * sizeOfUint32);
             }
             componentType = 'UNSIGNED_INT';
             byteAlignment = sizeOfUint32;

@@ -7,7 +7,7 @@ const gltfPipeline = require("gltf-pipeline");
 const processGltf = gltfPipeline.processGltf;
 const processGlb = gltfPipeline.processGlb;
 var optimizeGlb = require('./optimizeGlb');
-var glbToB3dm = require('./glbToB3dm');
+var createB3dm = require('./createB3dm');
 var zlibGzip = Promise.promisify(zlib.gzip);
 function readB3dmWriteGlb(inputPath, outputPath, force) {
     outputPath = defaultValue(outputPath, inputPath.slice(0, inputPath.length - 4) + 'glb');
@@ -82,7 +82,7 @@ function readAndOptimizeB3dm(inputPath, outputPath = inputPath.slice(0, inputPat
         })
         .then(function(glbBuffer) {
             console.log(glbBuffer);
-            var b3dmBuffer = glbToB3dm(glbBuffer.glb, b3dm.featureTable.json, b3dm.featureTable.binary, b3dm.batchTable.json, b3dm.batchTable.binary);
+            var b3dmBuffer = createB3dm(glbBuffer.glb, b3dm.featureTable.json, b3dm.featureTable.binary, b3dm.batchTable.json, b3dm.batchTable.binary);
             if (gzipped) {
                 return zlibGzip(b3dmBuffer);
             }

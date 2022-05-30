@@ -150,7 +150,7 @@ async function instance(doc) {
 	let numInstances = 0;
 	const i3dms = [];
 	const b3dms = [];
-
+    let currentBatchId = 0;
 	for (const scene of root.listScenes()) {
 		// Gather a one-to-many Mesh/Node mapping, identifying what we can instance.
 		const meshInstances = new Map();
@@ -163,22 +163,40 @@ async function instance(doc) {
 		// For each Mesh, create an InstancedMesh and collect transforms.
 		const modifiedNodes = [];
 		for (const mesh of Array.from(meshInstances.keys())) {
+
+		
+
+			const batchTableJson = {
+				batchId: [],
+				name: [],
+				maxPoint: [],
+				minPoint: []
+			}
 			const nodes = Array.from(meshInstances.get(mesh));
 			// not instance mesh : all merge by material then  split to  b3dm
 			if (nodes.length < 2) {
+
+				
+
 				const node = nodes[0];
 				t = node.getWorldTranslation()
 				r = node.getWorldRotation()
 				s = node.getWorldScale()
+               batchTableJson.batchId.push(currentBatchId)
+			   batchTableJson.name.push(node.getName())
+	
+
 				b3dms.push({
 					type: "b3dm",
 					mesh,
+					batchTableJson,
 					TRANSFORMATIONS:{
 						t,
 						r,
 						s
 					}
 				})
+				currentBatchId++;
 				continue
 			};
 			if (nodes.some((node) => node.getSkin())) continue;
@@ -204,6 +222,13 @@ async function instance(doc) {
 					const euler = new Euler().setFromQuaternion(quaternion.normalize());
 					featureTableJson.orientation.push([euler.x, euler.y, euler.z]);
 					featureTableJson.scale.push(s)
+
+		        	// i3dm 添加该mesh的所有节点名字
+
+					batchTableJson.batchId.push(currentBatchId)
+					batchTableJson.name.push(node.getName())
+    				currentBatchId++;
+ 
 				}
 			}
 
@@ -218,6 +243,7 @@ async function instance(doc) {
 				i3dms.push({
 					type: "i3dm",
 					mesh,
+					batchTableJson,
 					featureTableJson
 				})
 				// console.log(featureTableJson);
@@ -250,9 +276,9 @@ async function instance(doc) {
 
      let index = -1;
 const 	 array = []
- 	for (const {type, mesh,TRANSFORMATIONS,featureTableJson } of [...i3dms,...b3dms]) {
-			console.log(`newDoc ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024 * 100) / 100} MB`);
+ 	for (const {type, mesh,TRANSFORMATIONS,featureTableJson,batchTableJson } of [...i3dms,...b3dms]) {
         index++;
+
 		const newDoc = doc.clone();
 
 		console.log(`newDoc ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024 * 100) / 100} MB`);
@@ -284,6 +310,27 @@ const 	 array = []
 		console.log(index);
 		console.log(name);
 
+		{
+			if(type==="b3dm"){
+			
+				curentMesh.listPrimitives().forEach((primitive) => {
+				// primitive.setAttribute("batchId", index);
+				// primitive.getAttribute("position").getMax()
+				// primitive.getAttribute("position").getMin()
+				const count = primitive.getAttribute('POSITION').getCount();
+				const accessor = newDoc
+				.createAccessor()
+				.setType(Accessor.Type.SCALAR);
+			  const array = new Uint32Array(count);
+			  const _batchId = batchTableJson.batchId[0];
+			  
+			  array.fill(_batchId);
+			  accessor.setArray(array);
+			  primitive.setAttribute('_batchid', accessor);
+
+			});
+			}
+		}
 		const meshDoc =await newDoc.transform(prune())
 		console.log(`meshDoc ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024 * 100) / 100} MB`);
 		
@@ -298,7 +345,8 @@ const 	 array = []
 			name,
 			glbPath: docPath,
 			bounding_box: get_bounding_box_by_doc(meshDoc),
-			featureTableJson
+			featureTableJson,
+			batchTableJson
 		})
 	}
 	return array;

@@ -5,7 +5,7 @@ var getJsonBufferPadded = require('./getJsonBufferPadded');
 
 
 
-module.exports = glbToB3dm;
+module.exports = createB3dm;
 
 /**
  * Generates a new Buffer representing a b3dm asset.
@@ -17,7 +17,7 @@ module.exports = glbToB3dm;
  * @param {Buffer} [batchTableBinary] The batch table binary.
  * @returns {Buffer} Buffer representing the b3dm asset.
  */
-function glbToB3dm(glbBuffer, featureTableJson = {
+function createB3dm(glbBuffer, featureTableJson = {
     BATCH_LENGTH: 0
 }, featureTableBinary, batchTableJson, batchTableBinary) {
     if (!glbBuffer) {

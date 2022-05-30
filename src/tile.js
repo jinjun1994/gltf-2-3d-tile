@@ -1,5 +1,5 @@
 const FOOT_TO_METER_MULTIPLIER = 0.3084
-const glbToB3dm = require('../tools/glbToB3dm');
+const createB3dm = require('../tools/createB3dm');
 const doc2I3dm = require('../tools/docToI3dm');
 const { Box3, Matrix4, Sphere, Vector3 } = require("three")
 const { Document, NodeIO, Accessor, BufferUtils, Primitive } = require('@gltf-transform/core');
@@ -68,7 +68,7 @@ class Tile {
     content() {
         const io = new NodeIO()
 
-        const { doc, glbPath, type, name, featureTableJson } = this.__gltf
+        const { doc, glbPath, type, name, featureTableJson, batchTableJson } = this.__gltf
         const fileName = filenamify(name || this.__content_id)
         console.log(glbPath);
         if (type === "i3dm") {
@@ -78,12 +78,12 @@ class Tile {
                     console.error(err)
                     return
                 }
-                doc2I3dm(glb, { customFeatureTable: featureTableJson }).then(i3dm => {
+                doc2I3dm(glb, { customFeatureTable: featureTableJson, batchTableJson }).then(i3dm => {
                     fsExtra.outputFile(`${this.fout + fileName}.i3dm`, i3dm.i3dm)
                 })
             })
 
-   
+
             return {
                 "uri": `${fileName}.i3dm`
             }
@@ -99,10 +99,10 @@ class Tile {
                     console.error(err)
                     return
                 }
-                fsExtra.outputFile(`${this.fout + fileName}.b3dm`, glbToB3dm(glb))
+                fsExtra.outputFile(`${this.fout + fileName}.b3dm`, createB3dm(glb))
                 // fsExtra.outputFile(`${this.fout + this.__content_id}.glb`, glb)
             })
-       
+
 
             return {
                 "uri": `${fileName}.b3dm`
