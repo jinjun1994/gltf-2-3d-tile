@@ -1,6 +1,7 @@
 const FOOT_TO_METER_MULTIPLIER = 0.3084
 const createB3dm = require('../tools/createB3dm');
 const doc2I3dm = require('../tools/docToI3dm');
+const doc2B3dm = require('../tools/docToB3dm');
 const { Box3, Matrix4, Sphere, Vector3 } = require("three")
 const { Document, NodeIO, Accessor, BufferUtils, Primitive } = require('@gltf-transform/core');
 var fsExtra = require('fs-extra');
@@ -99,7 +100,10 @@ class Tile {
                     console.error(err)
                     return
                 }
-                fsExtra.outputFile(`${this.fout + fileName}.b3dm`, createB3dm(glb))
+                // fsExtra.outputFile(`${this.fout + fileName}.b3dm`, createB3dm(glb))
+                doc2B3dm(glb, { batchTableJson }).then(b3dm => {
+                    fsExtra.outputFile(`${this.fout + fileName}.b3dm`, b3dm.b3dm)
+                })
                 // fsExtra.outputFile(`${this.fout + this.__content_id}.glb`, glb)
             })
 

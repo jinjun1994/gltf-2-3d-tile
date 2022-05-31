@@ -1,6 +1,5 @@
 'use strict';
 var createB3dm = require('./createB3dm');
-var obj2gltf = require('./obj2gltf');
 
 module.exports = doc2B3dm;
 

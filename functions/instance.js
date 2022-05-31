@@ -321,8 +321,18 @@ const 	 array = []
 				const accessor = newDoc
 				.createAccessor()
 				.setType(Accessor.Type.SCALAR);
-			  const array = new Uint32Array(count);
+			  let array 
 			  const _batchId = batchTableJson.batchId[0];
+
+			  if (_batchId < 256) {
+				array = new Uint8Array(count);
+			} else if (_batchId < 65536) {
+				array = new Uint16Array(count);
+	
+			} else {
+				array = new Uint32Array(count);
+			
+			}
 			  
 			  array.fill(_batchId);
 			  accessor.setArray(array);
@@ -332,9 +342,7 @@ const 	 array = []
 			}
 		}
 		const meshDoc =await newDoc.transform(prune())
-		console.log(`meshDoc ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024 * 100) / 100} MB`);
-		
-		console.log(`i3dm doc Done ${index}`);
+
 		const docPath = `./tmp/${filenamify(name.replace("/", ""))}.glb`
 		const glb = await io.writeBinary(meshDoc)
 		await fsExtra.outputFile(docPath, glb)

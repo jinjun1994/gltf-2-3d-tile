@@ -1,44 +1,62 @@
 'use strict';
+var Cesium = require('cesium');
+var getBufferPadded = require('./getBufferPadded8Byte');
+var getJsonBufferPadded = require('./getJsonBufferPadded8Byte');
 
-var getBufferPadded = require('./getBufferPadded');
-var getJsonBufferPadded = require('./getJsonBufferPadded');
-
-
+var defaultValue = Cesium.defaultValue;
 
 module.exports = createB3dm;
 
 /**
- * Generates a new Buffer representing a b3dm asset.
+ * Create a Batched 3D Model (b3dm) tile from a binary glTF and per-feature metadata.
  *
- * @param {Buffer} glbBuffer A buffer containing a binary glTF asset.
- * @param {Object} [featureTableJson] The feature table JSON.
- * @param {Buffer} [featureTableBinary] The feature table binary.
- * @param {Object} [batchTableJson] The batch table JSON.
- * @param {Buffer} [batchTableBinary] The batch table binary.
- * @returns {Buffer} Buffer representing the b3dm asset.
+ * @param {Object} options An object with the following properties:
+ * @param {Buffer} options.glb The binary glTF buffer.
+ * @param {Object} [options.featureTableJson] Feature table JSON.
+ * @param {Buffer} [options.featureTableBinary] Feature table binary.
+ * @param {Object} [options.batchTableJson] Batch table describing the per-feature metadata.
+ * @param {Buffer} [options.batchTableBinary] The batch table binary.
+ * @param {Boolean} [options.deprecated1=false] Save the b3dm with the deprecated 20-byte header.
+ * @param {Boolean} [options.deprecated2=false] Save the b3dm with the deprecated 24-byte header.
+ * @returns {Buffer} The generated b3dm tile buffer.
  */
-function createB3dm(glbBuffer, featureTableJson = {
-    BATCH_LENGTH: 0
-}, featureTableBinary, batchTableJson, batchTableBinary) {
-    if (!glbBuffer) {
-        throw new Error('glbBuffer is not defined.');
-    }
+function createB3dm(options) {
+    var glb = options.glb;
+    var defaultFeatureTable = {
+        BATCH_LENGTH : 0
+    };
+    var featureTableJson = defaultValue(options.featureTableJson, defaultFeatureTable);
+    var batchLength = featureTableJson.BATCH_LENGTH;
 
     var headerByteLength = 28;
     var featureTableJsonBuffer = getJsonBufferPadded(featureTableJson, headerByteLength);
-    var featureTableBinaryBuffer = getBufferPadded(featureTableBinary);
-    var batchTableJsonBuffer = getJsonBufferPadded(batchTableJson);
-    var batchTableBinaryBuffer = getBufferPadded(batchTableBinary);
+    var featureTableBinary = getBufferPadded(options.featureTableBinary);
+    var batchTableJsonBuffer = getJsonBufferPadded(options.batchTableJson);
+    var batchTableBinary = getBufferPadded(options.batchTableBinary);
 
-    var byteLength = headerByteLength + featureTableJsonBuffer.length + featureTableBinaryBuffer.length + batchTableJsonBuffer.length + batchTableBinaryBuffer.length + glbBuffer.length;
-    var header = Buffer.alloc(headerByteLength);
-    header.write('b3dm', 0);                                    // magic
-    header.writeUInt32LE(1, 4);                                 // version
-    header.writeUInt32LE(byteLength, 8);                        // byteLength - length of entire tile, including header, in bytes
-    header.writeUInt32LE(featureTableJsonBuffer.length, 12);    // featureTableJSONByteLength - length of feature table JSON section in bytes.
-    header.writeUInt32LE(featureTableBinaryBuffer.length, 16);  // featureTableBinaryByteLength - length of feature table binary section in bytes.
-    header.writeUInt32LE(batchTableJsonBuffer.length, 20);      // batchTableJSONByteLength - length of batch table JSON section in bytes. (0 for basic, no batches)
-    header.writeUInt32LE(batchTableBinaryBuffer.length, 24);    // batchTableBinaryByteLength - length of batch table binary section in bytes. (0 for basic, no batches)
 
-    return Buffer.concat([header, featureTableJsonBuffer, featureTableBinaryBuffer, batchTableJsonBuffer, batchTableBinaryBuffer, glbBuffer]);
+    return createB3dmCurrent(glb, featureTableJsonBuffer, featureTableBinary, batchTableJsonBuffer, batchTableBinary);
 }
+
+function createB3dmCurrent(glb, featureTableJson, featureTableBinary, batchTableJson, batchTableBinary) {
+    var version = 1;
+    var headerByteLength = 28;
+    var featureTableJsonByteLength = featureTableJson.length;
+    var featureTableBinaryByteLength = featureTableBinary.length;
+    var batchTableJsonByteLength = batchTableJson.length;
+    var batchTableBinaryByteLength = batchTableBinary.length;
+    var gltfByteLength = glb.length;
+    var byteLength = headerByteLength + featureTableJsonByteLength + featureTableBinaryByteLength + batchTableJsonByteLength + batchTableBinaryByteLength + gltfByteLength;
+
+    var header = Buffer.alloc(headerByteLength);
+    header.write('b3dm', 0);
+    header.writeUInt32LE(version, 4);
+    header.writeUInt32LE(byteLength, 8);
+    header.writeUInt32LE(featureTableJsonByteLength, 12);
+    header.writeUInt32LE(featureTableBinaryByteLength, 16);
+    header.writeUInt32LE(batchTableJsonByteLength, 20);
+    header.writeUInt32LE(batchTableBinaryByteLength, 24);
+
+    return Buffer.concat([header, featureTableJson, featureTableBinary, batchTableJson, batchTableBinary, glb]);
+}
+
