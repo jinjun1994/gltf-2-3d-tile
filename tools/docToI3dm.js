@@ -158,6 +158,7 @@ function doc2I3dm(glb, options) {
 
         for (var i = 0; i < length; i++) {
             var rotate = orientations[i];
+            // up方向
             var up = new Cartesian3(0, 1, 0);
             var right = new Cartesian3(1, 0, 0);
             var m = Matrix3.fromRotationZ(CMath.toRadians(rotate[2]));

@@ -1,13 +1,15 @@
 const { dedup, inspect, utils,prune } = require('@gltf-transform/functions');
 const { InstancedMesh, MeshGPUInstancing } = require('@gltf-transform/extensions');
 const { Quaternion, Euler } = require("three")
-const { allProgress, get_bounding_box_by_doc } = require('../tools/utils');
+const { allProgress, get_bounding_box_by_doc,getEuler } = require('../tools/utils');
 const Piscina = require('piscina');
 const path = require('path');
 const { cpus } = require('os');
 const ext = require('@gltf-transform/extensions');
 var fsExtra = require('fs-extra');
 const filenamify = require("filenamify");
+const {vec3,mat4,quat} = require('gl-matrix');
+const { multiply } = require( 'gl-matrix/mat4');
 
 const {
 	Accessor,
@@ -164,7 +166,6 @@ async function instance(doc) {
 		const modifiedNodes = [];
 		for (const mesh of Array.from(meshInstances.keys())) {
 
-		
 
 			const batchTableJson = {
 				batchId: [],
@@ -173,27 +174,43 @@ async function instance(doc) {
 				minPoint: []
 			}
 			const nodes = Array.from(meshInstances.get(mesh));
+
+		// if( Math.random()<0.95&& nodes.filter(n=>n.getName().includes("byc")||n.getName().includes("BYC")||n.getName().includes("BY")).length<1) continue
+		if(nodes.filter(n=>n.getName().includes("byc")||n.getName().includes("BYC8-3900*3200")).length<1) continue
+
 			// not instance mesh : all merge by material then  split to  b3dm
 			if (nodes.length < 2) {
 
 				
 
 				const node = nodes[0];
-				t = node.getWorldTranslation()
-				r = node.getWorldRotation()
-				s = node.getWorldScale()
+	
+			let	worldMatrix = node.getWorldMatrix()
+			let	localMatrix = node.getMatrix()
+			let	localT = node.getTranslation()
+			let	localR = node.getRotation()
+			let	lpcalS = node.getScale()
                batchTableJson.batchId.push(currentBatchId)
 			   batchTableJson.name.push(node.getName())
 	
+			   fsExtra.outputFile(`./tmp/${filenamify(mesh.getName())}.b3dm.json`, JSON.stringify({TRANSFORMATIONS:{
+				localT,
+				localR,
+				lpcalS,
+				localMatrix,
+				worldMatrix
+			},...batchTableJson}))        
 
 				b3dms.push({
 					type: "b3dm",
 					mesh,
 					batchTableJson,
 					TRANSFORMATIONS:{
-						t,
-						r,
-						s
+						worldMatrix,
+						localT,
+						localMatrix,
+						localR,
+						lpcalS,
 					}
 				})
 				currentBatchId++;
@@ -208,20 +225,44 @@ async function instance(doc) {
 			}
 			// For each Node, write TRS properties into instance attributes.
 			for (let i = 0; i < nodes.length; i++) {
-				let t, r, s;
+				let t = vec3.create(), r= quat.create(), s= vec3.create();
 				const node = nodes[i];
-				t = node.getWorldTranslation()
-				r = node.getWorldRotation()
-				s = node.getWorldScale()
-
-				modifiedNodes.push(node);
+				const matrix = node.getWorldMatrix();
+				// console.log("getMatrix",node.getMatrix());
+				// console.log("getWorldMatrix",matrix);
+				// multiply(matrix, matrix, node.getMatrix());
+				// console.log("multiply",matrix);
+              
+				// t = node.getWorldTranslation()
+				// r = node.getWorldRotation()
+				// s = node.getWorldScale()
+				const nodeMat4 = mat4.fromValues(...matrix);
+				// mat4.translate(nodeMat4, nodeMat4, [100,100,100]);
+				t = mat4.getTranslation(t,nodeMat4)
+				r = mat4.getRotation(r,nodeMat4)
+				s = mat4.getScaling(s,nodeMat4)
+                
+				const rEuler = [0,0,0]
+				getEuler(rEuler,r)
+				// console.log(rEuler);
+				if(node.getName()=="BYC8-3900*3200"){
+				console.log("t",t);
+				console.log("s",s);
+				console.log("r",r);
+				console.log("t",node.getWorldTranslation());
+				console.log("s",node.getWorldScale());
+				console.log("r",node.getWorldRotation());
+				console.log("rEuler",rEuler);
+				}
 				{
 					//i3dm
-					featureTableJson.position.push(t)
+					featureTableJson.position.push([t[0],t[1],t[2]])
 					var quaternion = new Quaternion().fromArray(r);
 					const euler = new Euler().setFromQuaternion(quaternion.normalize());
-					featureTableJson.orientation.push([euler.x, euler.y, euler.z]);
-					featureTableJson.scale.push(s)
+					// featureTableJson.orientation.push([euler.x, euler.y, euler.z]);
+					featureTableJson.orientation.push(rEuler);
+					// console.log([euler.x, euler.y, euler.z]);
+					featureTableJson.scale.push([s[0],s[1],s[2]])
 
 		        	// i3dm 添加该mesh的所有节点名字
 
@@ -237,6 +278,7 @@ async function instance(doc) {
 			numBatches++;
 			numInstances += nodes.length;
 
+			fsExtra.outputFile(`./tmp/${filenamify(mesh.getName())}.json`, JSON.stringify({...featureTableJson,...batchTableJson}))        
 
 			{
 				//i3dm 
@@ -267,6 +309,9 @@ async function instance(doc) {
 		logger.info(
 			`${NAME}: Created ${numBatches} batches, with ${numInstances} total instances.`
 		);
+		logger.info(
+			`${NAME}: Created ${b3dms.length} b3dm, with ${b3dms.length} total instances.`
+		);
 	} else {
 		logger.info(`${NAME}: No meshes with multiple parent nodes were found.`);
 		batchExtension.dispose();
@@ -282,7 +327,9 @@ const 	 array = []
 		const newDoc = doc.clone();
 
 		console.log(`newDoc ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024 * 100) / 100} MB`);
-
+        let length
+		console.log(length= newDoc.getRoot().listMeshes().filter(m => m.getName() == mesh.getName()).length);
+		if(length>1)throw new Error(`${mesh.getName()} 名字重复`)
 		const curentMesh = newDoc.getRoot().listMeshes().filter(m => m.getName() == mesh.getName())[0];
 
 		const oldScene = newDoc.getRoot().getDefaultScene();
@@ -292,9 +339,27 @@ const 	 array = []
 		const node = newDoc.createNode(mesh.getName());
 		node.setMesh(curentMesh);
 		if(TRANSFORMATIONS){
-			node.setTranslation(TRANSFORMATIONS.t);
-			node.setRotation(TRANSFORMATIONS.r);
-			node.setScale(TRANSFORMATIONS.s);
+			// node.setTranslation(TRANSFORMATIONS.localT);
+			// node.setRotation(TRANSFORMATIONS.localR);
+			// node.setScale(TRANSFORMATIONS.lpcalS);
+			const matrix = TRANSFORMATIONS.worldMatrix;
+			// multiply(matrix, matrix, TRANSFORMATIONS.localMatrix);
+			curentMesh.listPrimitives().forEach((primitive) => {
+		
+				const count = primitive.getAttribute('POSITION').getCount();
+				for (let i = 0; i < count; i++) {
+				  const target = [0, 0, 0];
+				  primitive.getAttribute('POSITION').getElement(i, target);
+				  const res = vec3.create();
+				  vec3.transformMat4(
+					res,
+					vec3.fromValues(...target),
+					matrix
+				  );
+				  primitive.getAttribute('POSITION').setElement(i, res);
+				}
+			});
+	
 		}
 		scene.addChild(node);
 		newDoc.getRoot().listNodes().forEach(element => {
