@@ -176,7 +176,7 @@ async function instance(doc) {
 			const nodes = Array.from(meshInstances.get(mesh));
 
 		// if( Math.random()<0.95&& nodes.filter(n=>n.getName().includes("byc")||n.getName().includes("BYC")||n.getName().includes("BY")).length<1) continue
-		if(nodes.filter(n=>n.getName().includes("byc")||n.getName().includes("BYC8-3900*3200")).length<1) continue
+		// if(nodes.filter(n=>n.getName().includes("byc")||n.getName().includes("BYC8-3900*3200")).length<1) continue
 
 			// not instance mesh : all merge by material then  split to  b3dm
 			if (nodes.length < 2) {
@@ -228,14 +228,7 @@ async function instance(doc) {
 				let t = vec3.create(), r= quat.create(), s= vec3.create();
 				const node = nodes[i];
 				const matrix = node.getWorldMatrix();
-				// console.log("getMatrix",node.getMatrix());
-				// console.log("getWorldMatrix",matrix);
-				// multiply(matrix, matrix, node.getMatrix());
-				// console.log("multiply",matrix);
-              
-				// t = node.getWorldTranslation()
-				// r = node.getWorldRotation()
-				// s = node.getWorldScale()
+	
 				const nodeMat4 = mat4.fromValues(...matrix);
 				// mat4.translate(nodeMat4, nodeMat4, [100,100,100]);
 				t = mat4.getTranslation(t,nodeMat4)
@@ -246,22 +239,16 @@ async function instance(doc) {
 				getEuler(rEuler,r)
 				// console.log(rEuler);
 				if(node.getName()=="BYC8-3900*3200"){
-				console.log("t",t);
-				console.log("s",s);
-				console.log("r",r);
-				console.log("t",node.getWorldTranslation());
-				console.log("s",node.getWorldScale());
-				console.log("r",node.getWorldRotation());
-				console.log("rEuler",rEuler);
+
+			
 				}
 				{
 					//i3dm
 					featureTableJson.position.push([t[0],t[1],t[2]])
 					var quaternion = new Quaternion().fromArray(r);
 					const euler = new Euler().setFromQuaternion(quaternion.normalize());
-					// featureTableJson.orientation.push([euler.x, euler.y, euler.z]);
-					featureTableJson.orientation.push(rEuler);
-					// console.log([euler.x, euler.y, euler.z]);
+
+					featureTableJson.orientation.push([euler.x, euler.y, euler.z].map(e=>e*180/Math.PI));
 					featureTableJson.scale.push([s[0],s[1],s[2]])
 
 		        	// i3dm 添加该mesh的所有节点名字
