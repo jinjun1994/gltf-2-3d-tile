@@ -8,17 +8,19 @@ BufferUtils.trim = (buffer) => {
 
 
 function flattenArray(newDoc, type, arrays) {
-  const array = new Float32Array(BufferUtils.concat(arrays.map(BufferUtils.trim)));
+  const array = new Float32Array(BufferUtils.concat(arrays));
   return newDoc.createAccessor().setType(type).setArray(array);
 }
 
 function flattenCustomArray(newDoc, type, arrays) {
-  const array = new Uint32Array(BufferUtils.concat(arrays.map(BufferUtils.trim)));
+  const array = new Uint32Array(BufferUtils.concat(arrays));
   return newDoc.createAccessor().setType(type).setArray(array);
 }
 
 function flattenIndex(newDoc, arrays) {
   let length = 0;
+  console.log(arrays);
+  console.log(arrays.forEach);
   arrays.forEach(a => { length += a.index.length; });
   let array;
   if (length > 65535) {
@@ -35,6 +37,7 @@ function flattenIndex(newDoc, arrays) {
     indexLength += a.index.length;
     positionLength += a.len;
   });
+  console.log(array);
   return newDoc.createAccessor().setType(Accessor.Type.SCALAR).setArray(array);
 }
 
@@ -109,70 +112,99 @@ function hasTextures(m) {
 function mergeByMaterial(doc, newDoc, normal, buffer) {
 
   for (const m of doc.getRoot().listMaterials()) {
-    console.log(doc.getRoot().listMaterials().length);
+    // if (!(m instanceof Material)) {
+    //   break;
+    // }
     const material = newDoc.createMaterial(m.getName());
     try {
       copyMaterial(newDoc, m, material);
     } catch (err) {
       console.log(err);
     }
-
-    const p = [],
-      n = [],
-      t = [],
-      t1 = [],
-      b = [],
-      s = [];
-    const indices = [];
+    // 同Materials且同Attribute才能合并
+    const nodeMap = new Map();
+    class MyAttribute {
+      p = []
+      n = []
+      t = []
+      t1 = []
+      b = []
+      s = []
+      indices = []
+    }
     for (const parent of m.listParents()) {
       if (parent.propertyType === 'Primitive') {
         if (!parent.getIndices()) {
           console.log('no indices');
           continue;
         }
+        const attList = [];
+        parent.listSemantics().sort().forEach(value => {
+          if (
+            value === '_batchid'
+            || value === '_status'
+            || value === 'POSITION'
+            || value === 'NORMAL'
+            || value === 'TEXCOORD_0'
+            || value === 'TEXCOORD_1'
+          ) {
+            attList.push(value);
+          }
+        });
+        const key = attList.toString();
+        const obj = nodeMap.get(key) || new MyAttribute();
         if (parent.getAttribute('_batchid')) {
-          b.push(parent.getAttribute('_batchid').getArray());
+          obj.b.push(parent.getAttribute('_batchid').getArray());
         }
         if (parent.getAttribute('_status')) {
-          s.push(parent.getAttribute('_status').getArray());
+          obj.s.push(parent.getAttribute('_status').getArray());
         }
-        p.push(parent.getAttribute('POSITION').getArray());
+        obj.p.push(parent.getAttribute('POSITION').getArray());
+
         // 没有贴图仍应保留法线数据
-        if (normal && parent.getAttribute('NORMAL')) { n.push(parent.getAttribute('NORMAL').getArray()); }
+        // if (normal && parent.getAttribute('NORMAL')) { obj.n.push(parent.getAttribute('NORMAL').getArray()); }
         // if (m.getName().includes('HuoJian1') || m.getName().includes('lambert24SG.001')) { n.push(parent.getAttribute('NORMAL').getArray()); }
         // 没有贴图的时候不复制 UV 数据
         if (hasTextures(m)) {
-          if (parent.getAttribute('TEXCOORD_0')) t.push(parent.getAttribute('TEXCOORD_0').getArray());
-          if (parent.getAttribute('TEXCOORD_1')) t1.push(parent.getAttribute('TEXCOORD_1').getArray());
+          if (parent.getAttribute('TEXCOORD_0')) obj.t.push(parent.getAttribute('TEXCOORD_0').getArray());
+          if (parent.getAttribute('TEXCOORD_1')) obj.t1.push(parent.getAttribute('TEXCOORD_1').getArray());
         }
-        indices.push({ index: parent.getIndices().getArray(), len: parent.getAttribute('POSITION').getCount() });
+        obj.indices.push({ index: parent.getIndices().getArray(), len: parent.getAttribute('POSITION').getCount() });
+        nodeMap.set(key, obj);
       }
     }
-    if (!indices.length) {
-      console.log('not used material', m.getName());
-      continue;
-    }
-    // console.log(p,p.length);
-    const mergedPrim = newDoc.createPrimitive()
-      .setMode(Primitive.Mode.TRIANGLES)
-      .setMaterial(material)
-      .setAttribute('POSITION', flattenArray(newDoc, 'VEC3', p));
-    if (b.length) { mergedPrim.setAttribute('_batchid', flattenCustomArray(newDoc, 'SCALAR', b)); }
-    if (s.length) { mergedPrim.setAttribute('_status', flattenCustomArray(newDoc, 'SCALAR', s)); }
-    if (n.length) { mergedPrim.setAttribute('NORMAL', flattenArray(newDoc, 'VEC3', n)); }
-    if (t.length) { mergedPrim.setAttribute('TEXCOORD_0', flattenArray(newDoc, 'VEC2', t)); }
-    if (t1.length) { mergedPrim.setAttribute('TEXCOORD_1', flattenArray(newDoc, 'VEC2', t1)); }
+    let i = 0;
+    nodeMap.forEach(obj => {
+      const { p, n, t, t1, b, s, indices } = obj;
+      if (!indices.length) {
+        console.log('not used material', m.getName());
+        return;
+      }
+      const mergedPrim = newDoc.createPrimitive()
+        .setMode(Primitive.Mode.TRIANGLES)
+        .setMaterial(material)
+        .setAttribute('POSITION', flattenArray(newDoc, 'VEC3', p));
+      if (b.length) {
+         mergedPrim.setAttribute('_batchid', flattenCustomArray(newDoc, 'SCALAR', b)); 
+        }
+      if (s.length) { mergedPrim.setAttribute('_status', flattenCustomArray(newDoc, 'SCALAR', s)); }
+      if (n.length) { mergedPrim.setAttribute('NORMAL', flattenArray(newDoc, 'VEC3', n)); }
+      if (t.length) { mergedPrim.setAttribute('TEXCOORD_0', flattenArray(newDoc, 'VEC2', t)); }
 
-    mergedPrim.setIndices(flattenIndex(newDoc, indices));
+      if (t1.length) { mergedPrim.setAttribute('TEXCOORD_1', flattenArray(newDoc, 'VEC2', t1)); }
+      console.log("indices.length",indices.length);
+      mergedPrim.setIndices(flattenIndex(newDoc, indices));
+      mergedPrim.listAttributes()
+        .forEach((attribute) => {
+          attribute.setBuffer(buffer);
+          
+        });
 
-    mergedPrim.listAttributes()
-      .forEach((attribute) => {
-        attribute.setBuffer(buffer);
-      });
-
-    const mergedMesh = newDoc.createMesh('MergedMesh_' + m.getName()).addPrimitive(mergedPrim);
-    const mergedNode = newDoc.createNode('MergedNode_' + m.getName()).setMesh(mergedMesh);
-    newDoc.getRoot().getDefaultScene().addChild(mergedNode);
+      const mergedMesh = newDoc.createMesh('MergedMesh_' + m.getName() + i).addPrimitive(mergedPrim);
+      const mergedNode = newDoc.createNode('MergedNode_' + m.getName() + i).setMesh(mergedMesh);
+      newDoc.getRoot().getDefaultScene().addChild(mergedNode);
+      i++;
+    });
 
   }
 }

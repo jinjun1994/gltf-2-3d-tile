@@ -1,4 +1,4 @@
-const { dedup, inspect, utils,prune } = require('@gltf-transform/functions');
+const { dedup, inspect, utils,prune,weld } = require('@gltf-transform/functions');
 const { InstancedMesh, MeshGPUInstancing } = require('@gltf-transform/extensions');
 const { Quaternion, Euler } = require("three")
 const { allProgress, get_bounding_box_by_doc,getEuler } = require('../tools/utils');
@@ -10,6 +10,8 @@ var fsExtra = require('fs-extra');
 const filenamify = require("filenamify");
 const {vec3,mat4,quat} = require('gl-matrix');
 const { multiply } = require( 'gl-matrix/mat4');
+const { mergeByMaterial } = require('../tools/utils');
+const mergeGltfs = require('../tools/merge-gltfs');
 
 const {
 	Accessor,
@@ -25,6 +27,7 @@ const {
 	Node,
 	PropertyType,
 } = require('@gltf-transform/core');
+const { off } = require('process');
 const io = new NodeIO().registerExtensions(ext.KHRONOS_EXTENSIONS);
 
 const piscina = new Piscina({
@@ -377,9 +380,9 @@ const 	 array = []
 			  const _batchId = batchTableJson.batchId[0];
 
 			  if (_batchId < 256) {
-				array = new Uint8Array(count);
+				array = new Uint32Array(count);
 			} else if (_batchId < 65536) {
-				array = new Uint16Array(count);
+				array = new Uint32Array(count);
 	
 			} else {
 				array = new Uint32Array(count);
@@ -395,7 +398,7 @@ const 	 array = []
 		}
 		const meshDoc =await newDoc.transform(prune())
 
-		const docPath = `./tmp/${filenamify(name.replace("/", ""))}.glb`
+		const docPath = `./tmp/${filenamify(name.replace("/", ""))}.${type}.glb`
 		const glb = await io.writeBinary(meshDoc)
 		await fsExtra.outputFile(docPath, glb)
 		// await io.write(docPath, meshDoc)
@@ -409,7 +412,36 @@ const 	 array = []
 			batchTableJson
 		})
 	}
-	return array;
+   
+	const b3dmArray = array.filter(({type})=>type =="b3dm")
+
+    
+
+    let gltfs = b3dmArray.map(({glbPath})=>glbPath )
+	const output = `./tmp/${filenamify("b3dmAll")}.glb`
+	const  docMerge = await mergeGltfs(gltfs,{
+		normal:true,
+		output
+	})
+   
+	const mergeB3dmArray = array.filter(({type})=>type =="i3dm")
+	mergeB3dmArray.push(
+		{
+			type:"b3dm",
+			name:"mergedB3dm",
+			glbPath: output,
+			bounding_box: get_bounding_box_by_doc(docMerge),
+			batchTableJson:{
+				batchId: Array.from(b3dmArray,({batchTableJson})=>batchTableJson.batchId).flat(),
+				name: Array.from(b3dmArray,({batchTableJson})=>batchTableJson.batchId).flat(),
+				maxPoint: [],
+				minPoint: []	
+			}
+		}
+	)
+    // array is all i3dm and all b3dm
+	// mergeB3dmArray is all i3dm and mergedB3dm
+	return mergeB3dmArray;
     // console.log(promiseArray);
 	// return allProgress(promiseArray,
 	// 	(p) => {
