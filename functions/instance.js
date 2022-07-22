@@ -12,6 +12,7 @@ const {vec3,mat4,quat} = require('gl-matrix');
 const { multiply } = require( 'gl-matrix/mat4');
 const { mergeByMaterial } = require('../tools/utils');
 const mergeGltfs = require('../tools/merge-gltfs');
+const {exec} = require('./gltfTransform');
 
 const {
 	Accessor,
@@ -27,7 +28,6 @@ const {
 	Node,
 	PropertyType,
 } = require('@gltf-transform/core');
-const { off } = require('process');
 const io = new NodeIO().registerExtensions(ext.KHRONOS_EXTENSIONS);
 
 const piscina = new Piscina({
@@ -380,9 +380,9 @@ const 	 array = []
 			  const _batchId = batchTableJson.batchId[0];
 
 			  if (_batchId < 256) {
-				array = new Uint32Array(count);
+				array = new Uint8Array(count);
 			} else if (_batchId < 65536) {
-				array = new Uint32Array(count);
+				array = new Uint16Array(count);
 	
 			} else {
 				array = new Uint32Array(count);
@@ -402,7 +402,6 @@ const 	 array = []
 		const glb = await io.writeBinary(meshDoc)
 		await fsExtra.outputFile(docPath, glb)
 		// await io.write(docPath, meshDoc)
-
 		array.push( {
 			type,
 			name,
@@ -439,6 +438,13 @@ const 	 array = []
 			}
 		}
 	)
+
+        //  await exec({
+		// 	path:
+		// 	[...gltfs,"./tmp/merge.exec.glb"]})
+       const result =  await exec(["merge",...gltfs,"./tmp/merge.exec.glb"])
+       console.log("merge result");
+
     // array is all i3dm and all b3dm
 	// mergeB3dmArray is all i3dm and mergedB3dm
 	return mergeB3dmArray;

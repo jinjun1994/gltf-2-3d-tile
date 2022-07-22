@@ -10,6 +10,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@gltf-transform/cli": "^2.1.7",
     "@gltf-transform/core": "^2.1.4",
     "@gltf-transform/extensions": "^2.1.4",
     "@gltf-transform/functions": "^2.1.4",
@@ -19,6 +20,7 @@
     "fs-extra": "^10.1.0",
     "gl-matrix": "^3.4.3",
     "gltf-pipeline": "^3.0.4",
+    "gltfpack": "^0.17.0",
     "piscina": "^3.2.0",
     "three": "^0.139.2",
     "zlib": "^1.0.5"

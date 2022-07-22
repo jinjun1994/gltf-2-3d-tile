@@ -22,7 +22,7 @@ function b3dmDraco(path) {
                         // read and optimize b3dm
                         readAndOptimizeB3dm(
                             filePath,
-                            filePath.replace("converterOut2", "converterOut2optimize7"),
+                            filePath.replace("3d1", "3d1optimize7"),
                             false, {
                             dracoOptions: {
                                 compressMeshes: true,
@@ -33,7 +33,7 @@ function b3dmDraco(path) {
                     }
                     else{
                         // save json file to same path
-                        fsExtra.copy(filePath, filePath.replace("converterOut2", "converterOut2optimize7"), (err) => {
+                        fsExtra.copy(filePath, filePath.replace("3d1", "3d1optimize7"), (err) => {
                             if (err) throw err;
                         }
                         );
@@ -49,4 +49,4 @@ function b3dmDraco(path) {
     );
 }
 
-b3dmDraco("F:/osgb/converterOut2");
+b3dmDraco("F:/osgb/3d1");

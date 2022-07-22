@@ -34,6 +34,7 @@ function createB3dm(options) {
     var batchTableJsonBuffer = getJsonBufferPadded(options.batchTableJson);
     var batchTableBinary = getBufferPadded(options.batchTableBinary);
 
+    console.log(glb.length);
 
     return createB3dmCurrent(glb, featureTableJsonBuffer, featureTableBinary, batchTableJsonBuffer, batchTableBinary);
 }

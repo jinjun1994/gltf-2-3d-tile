@@ -82,7 +82,13 @@ function readAndOptimizeB3dm(inputPath, outputPath = inputPath.slice(0, inputPat
         })
         .then(function(glbBuffer) {
             console.log(glbBuffer);
-            var b3dmBuffer = createB3dm(glbBuffer.glb, b3dm.featureTable.json, b3dm.featureTable.binary, b3dm.batchTable.json, b3dm.batchTable.binary);
+            console.log(glbBuffer.glb.length);
+            var b3dmBuffer = createB3dm({
+                glb: glbBuffer.glb, 
+                featureTableJson: b3dm.featureTable.json, 
+                featureTableBinary: b3dm.featureTable.binary,
+                batchTableJson: b3dm.batchTable.json, 
+                batchTableBinary: b3dm.batchTable.binary});
             if (gzipped) {
                 return zlibGzip(b3dmBuffer);
             }

@@ -19,8 +19,7 @@ function flattenCustomArray(newDoc, type, arrays) {
 
 function flattenIndex(newDoc, arrays) {
   let length = 0;
-  console.log(arrays);
-  console.log(arrays.forEach);
+  // console.log(arrays);
   arrays.forEach(a => { length += a.index.length; });
   let array;
   if (length > 65535) {
@@ -37,7 +36,7 @@ function flattenIndex(newDoc, arrays) {
     indexLength += a.index.length;
     positionLength += a.len;
   });
-  console.log(array);
+  // console.log(array);
   return newDoc.createAccessor().setType(Accessor.Type.SCALAR).setArray(array);
 }
 
